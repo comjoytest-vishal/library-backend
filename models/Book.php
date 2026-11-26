@@ -5,15 +5,89 @@ require_once __DIR__ . '/Model.php';
 
 class Book extends Model
 {
-    // Get all books
-    public function getAll()
-    {
-        $sql = "SELECT * FROM books ORDER BY id DESC";
+ 
+  // Get all books with pagination
+  
+// Get all books with search, filter and pagination
+public function getAll($limit, $offset, $search = '', $classId = null)
+{
+    $sql = "SELECT * FROM books WHERE 1=1";
 
-        $stmt = $this->db->query($sql);
+    $params = [];
 
-        return $stmt->fetchAll();
+    // Search by book name
+    if ($search !== '') {
+        $sql .= " AND name LIKE :search";
+        $params[':search'] = '%' . $search . '%';
     }
+
+    // Filter by class_id
+    if ($classId !== null) {
+        $sql .= " AND class_id = :class_id";
+        $params[':class_id'] = $classId;
+    }
+
+    // Sorting
+    $sql .= " ORDER BY id DESC";
+
+    // Pagination
+    $sql .= " LIMIT :limit OFFSET :offset";
+
+    $stmt = $this->db->prepare($sql);
+
+    // Bind search and filter parameters
+    foreach ($params as $key => $value) {
+        if ($key === ':class_id') {
+            $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
+        } else {
+            $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        }
+    }
+
+    // Bind pagination parameters
+    $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int) $offset, PDO::PARAM_INT);
+
+    $stmt->execute();
+
+    return $stmt->fetchAll();
+}
+
+
+// Count total matching books
+public function count($search = '', $classId = null)
+{
+    $sql = "SELECT COUNT(*) FROM books WHERE 1=1";
+
+    $params = [];
+
+    // Search by book name
+    if ($search !== '') {
+        $sql .= " AND name LIKE :search";
+        $params[':search'] = '%' . $search . '%';
+    }
+
+    // Filter by class_id
+    if ($classId !== null) {
+        $sql .= " AND class_id = :class_id";
+        $params[':class_id'] = $classId;
+    }
+
+    $stmt = $this->db->prepare($sql);
+
+    // Bind parameters
+    foreach ($params as $key => $value) {
+        if ($key === ':class_id') {
+            $stmt->bindValue($key, (int) $value, PDO::PARAM_INT);
+        } else {
+            $stmt->bindValue($key, $value, PDO::PARAM_STR);
+        }
+    }
+
+    $stmt->execute();
+
+    return (int) $stmt->fetchColumn();
+}
 
 
     // Get book by ID
@@ -85,11 +159,5 @@ class Book extends Model
     }
 
 
-    // Count total books
-    public function count()
-    {
-        $sql = "SELECT COUNT(*) FROM books";
-
-        return (int) $this->db->query($sql)->fetchColumn();
-    }
+  
 }

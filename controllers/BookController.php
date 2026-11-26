@@ -13,17 +13,75 @@ class BookController
     }
 
 
-    // GET: Get all books
-    public function index()
-    {
-        $books = $this->book->getAll();
+    
+// GET: Get all books with search, filter and pagination
+public function index()
+{
+    // 1. Get search parameter
+    $search = trim($_GET['search'] ?? '');
 
-        return [
-            'status' => true,
-            'message' => 'Books fetched successfully',
-            'data' => $books
-        ];
+    // 2. Get class_id parameter
+    $classId = filter_input(INPUT_GET, 'class_id', FILTER_VALIDATE_INT);
+
+    // Validate class_id if provided
+    if (isset($_GET['class_id'])) {
+        if ($classId === false || $classId === null || $classId < 1) {
+            return [
+                'status' => false,
+                'message' => 'Invalid class_id'
+            ];
+        }
+    } else {
+        $classId = null;
     }
+
+    // 3. Get pagination parameters
+    $page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT);
+    $limit = filter_input(INPUT_GET, 'limit', FILTER_VALIDATE_INT);
+
+    // Validate page
+    $page = ($page !== false && $page !== null && $page >= 1)
+        ? $page
+        : 1;
+
+    // Validate limit
+    $limit = ($limit !== false && $limit !== null && $limit >= 1)
+        ? $limit
+        : 10;
+
+    // Set maximum limit
+    $limit = min($limit, 50);
+
+    // 4. Calculate offset
+    $offset = ($page - 1) * $limit;
+
+    // 5. Fetch filtered books with pagination
+    $books = $this->book->getAll(
+        $limit,
+        $offset,
+        $search,
+        $classId
+    );
+
+    // 6. Get total matching books (without pagination)
+    $totalBooks = $this->book->count($search, $classId);
+
+    // 7. Calculate total pages
+    $totalPages = (int) ceil($totalBooks / $limit);
+
+    // 8. Return response
+    return [
+        'status' => true,
+        'message' => 'Books fetched successfully',
+        'data' => $books,
+        'pagination' => [
+            'current_page' => $page,
+            'per_page' => $limit,
+            'total_books' => $totalBooks,
+            'total_pages' => $totalPages
+        ]
+    ];
+}
 
 
     // GET: Get book by ID
