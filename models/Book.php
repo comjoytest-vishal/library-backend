@@ -5,9 +5,6 @@ require_once __DIR__ . '/Model.php';
 
 class Book extends Model
 {
- 
-  // Get all books with pagination
-  
 // Get all books with search, filter and pagination
 public function getAll($limit, $offset, $search = '', $classId = null)
 {
